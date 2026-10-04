@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AttendX — Face enrolment</title>
+  <meta name="description" content="Self-enrol student face biometrics for instant attendance check-in.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/js/face-api.min.js"></script>
+
+  <style>
+    /* ===== Searchable Student Picker ===== */
+    .student-picker { position: relative; }
+
+    .sp-search-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.07);
+      border: 1.5px solid rgba(255,255,255,0.18);
+      border-radius: var(--radius);
+      padding: 0 10px;
+      transition: border-color 0.18s, background 0.18s;
+    }
+    .sp-search-wrap:focus-within {
+      border-color: var(--accent, #3b82f6);
+      background: rgba(255,255,255,0.10);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+    .sp-search-icon { color: rgba(255,255,255,0.4); flex-shrink: 0; }
+    .sp-search-input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 0.9rem;
+      font-family: inherit;
+      padding: 10px 0;
+      min-width: 0;
+    }
+    .sp-search-input::placeholder { color: rgba(255,255,255,0.3); }
+    .sp-clear-btn {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.4);
+      cursor: pointer;
+      padding: 4px;
+      display: none;
+      align-items: center;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .sp-clear-btn:hover { color: #fff; }
+    .sp-clear-btn.visible { display: flex; }
+
+    /* Selected pill shown in the search box */
+    .sp-selected-chip {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      background: rgba(59,130,246,0.2);
+      border: 1px solid rgba(59,130,246,0.4);
+      border-radius: 20px;
+      padding: 3px 8px 3px 4px;
+      font-size: 0.78rem;
+      color: #93c5fd;
+      white-space: nowrap;
+      max-width: 210px;
+    }
+    .sp-selected-chip.visible { display: flex; }
+    .sp-chip-avatar {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+
+    /* Dropdown list */
+    .sp-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0; right: 0;
+      background: #13234a;
+      border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: var(--radius);
+      max-height: 240px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.15) transparent;
+    }
+    .sp-dropdown.open { display: block; }
+    .sp-dropdown::-webkit-scrollbar { width: 5px; }
+    .sp-dropdown::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+
+    .sp-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      transition: background 0.1s;
+    }
+    .sp-item:last-child { border-bottom: none; }
+    .sp-item:hover, .sp-item.focused {
+      background: rgba(59,130,246,0.12);
+    }
+    .sp-item.selected {
+      background: rgba(59,130,246,0.18);
+    }
+    .sp-avatar {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #1e3a6e, #2563eb);
+    }
+    .sp-avatar.enrolled {
+      background: linear-gradient(135deg, #065f46, #059669);
+    }
+    .sp-info { flex: 1; min-width: 0; }
+    .sp-name {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sp-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 2px;
+    }
+    .sp-roll {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.45);
+      font-family: monospace;
+    }
+    .sp-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 1px 6px;
+      border-radius: 10px;
+      text-transform: uppercase;
+    }
+    .sp-badge.enrolled {
+      background: rgba(16,185,129,0.2);
+      color: #34d399;
+      border: 1px solid rgba(16,185,129,0.3);
+    }
+    .sp-badge.not-enrolled {
+      background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.35);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .sp-check {
+      color: #34d399;
+      flex-shrink: 0;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .sp-item.selected .sp-check { opacity: 1; }
+
+    .sp-empty {
+      padding: 18px;
+      text-align: center;
+      color: rgba(255,255,255,0.3);
+      font-size: 0.8125rem;
+    }
+    /* ===== End Picker ===== */
+
+    .flip-btn {
+      position: absolute;
+      top: 10px; right: 10px;
+      width: 36px; height: 36px;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(16,35,63,0.6);
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      z-index: 5;
+      border-radius: var(--radius);
+      transition: background 0.15s;
+    }
+    .flip-btn:hover { background: rgba(16,35,63,0.85); }
+
+    .enroll-status {
+      padding: 10px 14px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+    }
+    .enroll-status.ready {
+      border-color: var(--present);
+      color: var(--present);
+    }
+
+    .upload-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8125rem;
+      color: rgba(255,255,255,0.5);
+      cursor: pointer;
+      padding: 7px 14px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: var(--radius);
+      transition: all 0.15s;
+    }
+    .upload-label:hover { color: #fff; border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); }
+    input[type="file"] { display: none; }
+
+    .success-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 16px;
+      padding: 32px 0;
+      color: #fff;
+    }
+    .success-check {
+      width: 60px; height: 60px;
+      border: 2px solid var(--present);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--present);
+    }
+  </style>
+</head>
+<body class="kiosk">
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Modern Camera Permission Modal -->
+  <div class="permission-modal-overlay" id="cameraPermissionModal" style="display: none;">
+    <div class="permission-card">
+      <div class="permission-icon-wrap">
+        <span class="icon" style="width:28px; height:28px;">
+          <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </span>
+      </div>
+
+      <div id="permissionPromptContent" style="display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%;">
+        <h3>Camera access required</h3>
+        <p>AttendX needs camera access to capture your face biometric descriptor.</p>
+        
+        <div class="security-callout">
+          <span class="icon" style="width:20px; height:20px; color: var(--present); margin-top: 1px;">
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
+          <div>
+            <b style="display:block; margin-bottom: 2px;">Privacy guarantee</b>
+            Only a 128-dimensional mathematical vector is stored. No video frames or photographs are ever uploaded.
+          </div>
+        </div>
+
+        <div class="permission-btn-group">
+          <button class="btn btn-primary" onclick="requestCameraAccess()">
+            Allow camera access
+          </button>
+          <label class="btn btn-secondary" for="photoFile" style="cursor: pointer; justify-content: center;">
+            Upload photo instead
+          </label>
+        </div>
+      </div>
+
+      <!-- Denied / Blocked Helper -->
+      <div id="permissionDeniedContent" style="display: none; flex-direction: column; align-items: center; gap: 12px; width: 100%;">
+        <h3 style="color: var(--absent);">Camera access is blocked</h3>
+        <p>Your browser has blocked camera permissions for this site.</p>
+        
+        <div class="permission-help-box">
+          <b>How to unblock in your browser:</b>
+          <ol>
+            <li>Click the <b>camera / lock icon</b> on the left of the address bar.</li>
+            <li>Change the <b>Camera</b> setting to <b>Allow</b>.</li>
+            <li>Click the retry button below or reload the page.</li>
+          </ol>
+        </div>
+
+        <div class="permission-btn-group">
+          <button class="btn btn-primary" onclick="requestCameraAccess()">
+            Retry camera access
+          </button>
+          <label class="btn btn-secondary" for="photoFile" style="cursor: pointer; justify-content: center;">
+            Upload portrait selfie
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="kiosk-wrap">
+    <div style="text-align: center;">
+      <h1 style="color: #fff;">Face enrolment</h1>
+      <p style="color: rgba(255,255,255,0.5); font-size: 0.8125rem; margin-top: 4px;">
+        Select your name, align your face in the oval frame, and register.
+      </p>
+      <div style="margin-top: 8px;">
+        <span class="security-badge-pill">
+          <span class="pulse-dot"></span>
+          Zero-Knowledge 128-D Biometrics
+        </span>
+      </div>
+    </div>
+
+    <div id="mainCard" style="display: flex; flex-direction: column; gap: 14px;">
+      <!-- Step 1: Select student (Searchable Picker) -->
+      <div>
+        <label style="font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.5); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Your name and roll number
+        </label>
+
+        <!-- Hidden data source (Jinja renders this) -->
+        <script id="studentData" type="application/json">
+          [
+            {% for s in students %}
+              {"id": "{{ s['id'] }}", "name": "{{ s['name'] }}", "has_face": {{ 'true' if s['has_face'] else 'false' }}}{% if not loop.last %},{% endif %}
+            {% endfor %}
+          ]
+        </script>
+
+        <div class="student-picker" id="studentPicker">
+          <!-- Search / Selected display -->
+          <div class="sp-search-wrap" id="spSearchWrap">
+            <span class="sp-search-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </span>
+            <!-- Selected chip (shown after selection) -->
+            <div class="sp-selected-chip" id="spChip">
+              <div class="sp-chip-avatar" id="spChipAvatar"></div>
+              <span id="spChipName"></span>
+            </div>
+            <input
+              type="text"
+              id="spInput"
+              class="sp-search-input"
+              placeholder="Search by name or roll number…"
+              autocomplete="off"
+              spellcheck="false"
+              role="combobox"
+              aria-expanded="false"
+              aria-autocomplete="list"
+              aria-controls="spDropdown"
+            >
+            <button class="sp-clear-btn" id="spClearBtn" onclick="clearPicker()" title="Clear selection" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <!-- Dropdown list -->
+          <div class="sp-dropdown" id="spDropdown" role="listbox" aria-label="Students"></div>
+        </div>
+      </div>
+
+      <!-- Step 2: Camera -->
+      <div class="viewport-frame" style="aspect-ratio: 3/4;">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+        <div class="guide-oval" id="guideOval"></div>
+        <button class="flip-btn" onclick="toggleCamera()" title="Flip camera">
+          <span class="icon" style="width:16px;height:16px;"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></span>
+        </button>
+
+        <!-- Loading overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+          <div class="spinner"></div>
+          <span id="loading-msg">Loading face models…</span>
+        </div>
+      </div>
+
+      <!-- Status pill -->
+      <div class="enroll-status" id="statusPill">
+        <span id="statusText">Loading neural face models…</span>
+      </div>
+
+      <!-- Capture button -->
+      <button class="btn btn-primary" id="enrollBtn" onclick="captureAndEnroll()" disabled style="width: 100%; justify-content: center; padding: 11px;">
+        <span class="icon" style="width:16px;height:16px;"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+        Capture and register face
+      </button>
+
+      <!-- Upload option -->
+      <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
+        <label class="upload-label" for="photoFile">
+          <span class="icon" style="width:14px;height:14px;"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+          Or upload a clear selfie photo
+        </label>
+        <input type="file" id="photoFile" accept="image/*" onchange="handlePhotoUpload(event)">
+      </div>
+
+      <!-- Navigation links -->
+      <div class="kiosk-nav" style="margin-top: 6px;">
+        <a href="/">
+          <span class="icon" style="width:14px;height:14px;"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+          Scanner kiosk
+        </a>
+        <a href="/login">
+          <span class="icon" style="width:14px;height:14px;"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+          Teacher login
+        </a>
+      </div>
+    </div>
+
+    <!-- Success screen -->
+    <div class="success-screen" id="successScreen">
+      <div class="success-check">
+        <span class="icon" style="width:28px; height:28px; color: var(--present);">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+      </div>
+      <h2 style="color: #fff;">Face enrolled successfully</h2>
+      <p id="successDesc" style="color: rgba(255,255,255,0.6); font-size: 0.875rem;">
+        Your face biometric profile has been saved. You can now mark attendance instantly at the scanner.
+      </p>
+      <div style="display:flex; flex-direction: column; gap: 8px; width: 100%; max-width: 280px; margin-top: 8px;">
+        <a href="/" class="btn btn-primary" style="text-decoration: none; justify-content: center;">Go to scanner kiosk</a>
+        <button class="btn btn-secondary" style="color: #fff; border-color: rgba(255,255,255,0.2);" onclick="resetForm()">Enrol another student</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let stream = null;
+    let facingMode = 'user';
+    let isDetecting = false;
+    let latestDescriptor = null;
+    let selectedStudentId = '';
+    let selectedStudentName = '';
+
+    const video           = document.getElementById('video');
+    const canvas          = document.getElementById('canvas');
+    const guideOval       = document.getElementById('guideOval');
+    const statusPill      = document.getElementById('statusPill');
+    const statusText      = document.getElementById('statusText');
+    const enrollBtn       = document.getElementById('enrollBtn');
+    const mainCard        = document.getElementById('mainCard');
+    const successScreen   = document.getElementById('successScreen');
+    const successDesc     = document.getElementById('successDesc');
+    const loadingOverlay  = document.getElementById('loading-overlay');
+    const loadingMsg      = document.getElementById('loading-msg');
+    const permissionModal = document.getElementById('cameraPermissionModal');
+    const promptContent   = document.getElementById('permissionPromptContent');
+    const deniedContent   = document.getElementById('permissionDeniedContent');
+
+    function showToast(msg, type) {
+      const c = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      el.className = 'toast ' + (type || 'info');
+      el.textContent = msg;
+      c.appendChild(el);
+      setTimeout(() => el.remove(), 3600);
+    }
+
+    // ============================================================
+    // Searchable Student Picker
+    // ============================================================
+    const ALL_STUDENTS = JSON.parse(document.getElementById('studentData').textContent);
+
+    const spInput     = document.getElementById('spInput');
+    const spDropdown  = document.getElementById('spDropdown');
+    const spChip      = document.getElementById('spChip');
+    const spChipAvatar= document.getElementById('spChipAvatar');
+    const spChipName  = document.getElementById('spChipName');
+    const spClearBtn  = document.getElementById('spClearBtn');
+
+    let spFocusedIdx = -1;
+
+    function initials(name) {
+      return name.trim().split(/\s+/).slice(0,2).map(w => w[0].toUpperCase()).join('');
+    }
+
+    function avatarGradient(id) {
+      // Deterministic hue from ID string
+      let h = 0;
+      for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
+      const hue = h % 360;
+      return `hsl(${hue},55%,35%)`;
+    }
+
+    function renderDropdown(query) {
+      const q = query.trim().toLowerCase();
+      const filtered = q
+        ? ALL_STUDENTS.filter(s =>
+            s.name.toLowerCase().includes(q) ||
+            String(s.id).toLowerCase().includes(q)
+          )
+        : ALL_STUDENTS;
+
+      spDropdown.innerHTML = '';
+      if (!filtered.length) {
+        spDropdown.innerHTML = '<div class="sp-empty">No students found</div>';
+        return;
+      }
+
+      // Sort: enrolled first when no query
+      const sorted = q ? filtered : [...filtered].sort((a,b) => (b.has_face ? 1 : 0) - (a.has_face ? 1 : 0));
+
+      sorted.forEach((s, idx) => {
+        const isSelected = s.id === selectedStudentId;
+        const div = document.createElement('div');
+        div.className = 'sp-item' + (isSelected ? ' selected' : '');
+        div.setAttribute('role', 'option');
+        div.setAttribute('aria-selected', isSelected);
+        div.dataset.idx = idx;
+        div.innerHTML = `
+          <div class="sp-avatar ${s.has_face ? 'enrolled' : ''}" style="background: ${avatarGradient(s.id)}">${initials(s.name)}</div>
+          <div class="sp-info">
+            <div class="sp-name">${highlightMatch(s.name, q)}</div>
+            <div class="sp-meta">
+              <span class="sp-roll">${s.id}</span>
+              <span class="sp-badge ${s.has_face ? 'enrolled' : 'not-enrolled'}">${s.has_face ? '✓ Face enrolled' : 'Not enrolled'}</span>
+            </div>
+          </div>
+          <svg class="sp-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        `;
+        div.addEventListener('mousedown', e => { e.preventDefault(); selectStudent(s); });
+        spDropdown.appendChild(div);
+      });
+      spFocusedIdx = -1;
+    }
+
+    function highlightMatch(text, query) {
+      if (!query) return text;
+      const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+      return text.replace(re, '<mark style="background:rgba(59,130,246,0.35);color:#93c5fd;border-radius:2px;padding:0 1px">$1</mark>');
+    }
+
+    function openDropdown() {
+      renderDropdown(spInput.value);
+      spDropdown.classList.add('open');
+      spInput.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeDropdown() {
+      spDropdown.classList.remove('open');
+      spInput.setAttribute('aria-expanded', 'false');
+      spFocusedIdx = -1;
+    }
+
+    function selectStudent(s) {
+      selectedStudentId   = s.id;
+      selectedStudentName = s.name;
+
+      // Show chip, hide raw input text
+      spChipAvatar.textContent = initials(s.name);
+      spChipAvatar.style.background = avatarGradient(s.id);
+      spChipName.textContent = `${s.name}  ·  ${s.id}`;
+      spChip.classList.add('visible');
+      spClearBtn.classList.add('visible');
+      spInput.value = '';
+      spInput.placeholder = '';
+
+      closeDropdown();
+      onStudentSelected();
+    }
+
+    function clearPicker() {
+      selectedStudentId = '';
+      selectedStudentName = '';
+      spChip.classList.remove('visible');
+      spClearBtn.classList.remove('visible');
+      spInput.placeholder = 'Search by name or roll number…';
+      spInput.value = '';
+      spInput.focus();
+      enrollBtn.disabled = true;
+      if (latestDescriptor) statusText.textContent = 'Select your name above';
+    }
+
+    spInput.addEventListener('focus', () => openDropdown());
+    spInput.addEventListener('input', () => { renderDropdown(spInput.value); spDropdown.classList.add('open'); });
+    document.addEventListener('mousedown', e => {
+      if (!document.getElementById('studentPicker').contains(e.target)) closeDropdown();
+    });
+    spInput.addEventListener('keydown', e => {
+      const items = spDropdown.querySelectorAll('.sp-item');
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        spFocusedIdx = Math.min(spFocusedIdx + 1, items.length - 1);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        spFocusedIdx = Math.max(spFocusedIdx - 1, 0);
+      } else if (e.key === 'Enter' && spFocusedIdx >= 0) {
+        e.preventDefault();
+        items[spFocusedIdx]?.dispatchEvent(new MouseEvent('mousedown'));
+      } else if (e.key === 'Escape') {
+        closeDropdown();
+      }
+      items.forEach((el, i) => el.classList.toggle('focused', i === spFocusedIdx));
+      if (spFocusedIdx >= 0) items[spFocusedIdx]?.scrollIntoView({ block: 'nearest' });
+    });
+
+    function onStudentSelected() {
+      enrollBtn.disabled = !(selectedStudentId && latestDescriptor);
+      if (selectedStudentId && latestDescriptor) {
+        statusText.textContent = `Ready to register face for ${selectedStudentName}`;
+      } else if (selectedStudentId) {
+        statusText.textContent = 'Center your face in the oval frame';
+      }
+    }
+
+    // ---- Camera Permission Management ----
+    async function checkCameraPermissionFlow() {
+      if (navigator.permissions && navigator.permissions.query) {
+        try {
+          const res = await navigator.permissions.query({ name: 'camera' });
+          if (res.state === 'granted') {
+            initAI();
+            return;
+          } else if (res.state === 'denied') {
+            showPermissionModal(true);
+            return;
+          }
+        } catch(e) {}
+      }
+      showPermissionModal(false);
+    }
+
+    function showPermissionModal(isDenied) {
+      permissionModal.style.display = 'flex';
+      if (isDenied) {
+        promptContent.style.display = 'none';
+        deniedContent.style.display = 'flex';
+      } else {
+        promptContent.style.display = 'flex';
+        deniedContent.style.display = 'none';
+      }
+    }
+
+    function hidePermissionModal() {
+      permissionModal.style.display = 'none';
+    }
+
+    async function requestCameraAccess() {
+      try {
+        const testStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        testStream.getTracks().forEach(t => t.stop());
+        hidePermissionModal();
+        initAI();
+      } catch (err) {
+        console.error('Camera permission request error:', err);
+        showPermissionModal(true);
+      }
+    }
+
+    async function initAI() {
+      loadingOverlay.style.display = 'flex';
+      loadingMsg.textContent = 'Loading face models…';
+      const MODEL_URL = '/static/models';
+      const FALLBACK = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+      try {
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL).catch(() => faceapi.nets.tinyFaceDetector.loadFromUri(FALLBACK));
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL).catch(() => faceapi.nets.faceLandmark68Net.loadFromUri(FALLBACK));
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL).catch(() => faceapi.nets.faceRecognitionNet.loadFromUri(FALLBACK));
+        loadingOverlay.style.display = 'none';
+        statusText.textContent = 'Position your face inside the oval';
+        startCamera();
+      } catch(err) {
+        console.error(err);
+        loadingMsg.textContent = 'Error loading models. Refresh page.';
+      }
+    }
+
+    async function startCamera() {
+      try {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: {ideal:640}, height: {ideal:480}, facingMode: facingMode },
+          audio: false
+        });
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          isDetecting = true;
+          faceDetectionLoop();
+        };
+      } catch(err) {
+        console.error('Camera error:', err);
+        showPermissionModal(true);
+      }
+    }
+
+    function toggleCamera() {
+      facingMode = (facingMode === 'user') ? 'environment' : 'user';
+      video.style.transform = (facingMode === 'user') ? 'scaleX(-1)' : 'none';
+      canvas.style.transform = (facingMode === 'user') ? 'scaleX(-1)' : 'none';
+      startCamera();
+    }
+
+    async function faceDetectionLoop() {
+      if (!isDetecting) return;
+      if (video.readyState === 4) {
+        const displaySize = { width: video.videoWidth, height: video.videoHeight };
+        faceapi.matchDimensions(canvas, displaySize);
+        const detection = await faceapi.detectSingleFace(
+          video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })
+        ).withFaceLandmarks().withFaceDescriptor();
+
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (detection) {
+          latestDescriptor = Array.from(detection.descriptor);
+          guideOval.classList.add('ready');
+          statusPill.classList.add('ready');
+          statusText.textContent = 'Face detected clearly — ready to save';
+          if (selectedStudentId) {
+            enrollBtn.disabled = false;
+          } else {
+            statusText.textContent = 'Face detected — select your name above';
+          }
+          const box = detection.detection.box;
+          ctx.strokeStyle = '#16794E';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(box.x, box.y, box.width, box.height);
+        } else {
+          latestDescriptor = null;
+          guideOval.classList.remove('ready');
+          statusPill.classList.remove('ready');
+          enrollBtn.disabled = true;
+          statusText.textContent = 'Center your face in the oval frame';
+        }
+      }
+      requestAnimationFrame(faceDetectionLoop);
+    }
+
+    async function captureAndEnroll() {
+      if (!selectedStudentId) { showToast('Select your name first', 'error'); return; }
+      if (!latestDescriptor) { showToast('No face detected — look at the camera', 'error'); return; }
+
+      statusText.textContent = 'Saving face profile…';
+      enrollBtn.disabled = true;
+
+      try {
+        const res = await fetch('/api/students/register-face', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: selectedStudentId, descriptor: latestDescriptor })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          isDetecting = false;
+          if (stream) stream.getTracks().forEach(t => t.stop());
+          mainCard.style.display = 'none';
+          successScreen.style.display = 'flex';
+          successDesc.textContent = `Face registered for ${selectedStudentName} (${selectedStudentId}).`;
+        } else {
+          showToast('Error: ' + data.message, 'error');
+          enrollBtn.disabled = false;
+        }
+      } catch(err) {
+        showToast('Network error', 'error');
+        enrollBtn.disabled = false;
+      }
+    }
+
+    async function handlePhotoUpload(e) {
+      hidePermissionModal();
+      const file = e.target.files[0];
+      if (!file) return;
+      statusText.textContent = 'Analysing photo…';
+      const img = await faceapi.bufferToImage(file);
+      const detection = await faceapi.detectSingleFace(
+        img, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.4 })
+      ).withFaceLandmarks().withFaceDescriptor();
+
+      if (detection) {
+        latestDescriptor = Array.from(detection.descriptor);
+        guideOval.classList.add('ready');
+        statusPill.classList.add('ready');
+        statusText.textContent = 'Face detected in photo — ready to save';
+        if (selectedStudentId) enrollBtn.disabled = false;
+        else showToast('Photo verified — now select your name', 'info');
+      } else {
+        showToast('Could not detect a face in the photo. Try a well-lit portrait.', 'error');
+        statusText.textContent = 'Photo detection failed';
+      }
+    }
+
+    function resetForm() {
+      successScreen.style.display = 'none';
+      mainCard.style.display = 'flex';
+      clearPicker();
+      enrollBtn.disabled = true;
+      startCamera();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => checkCameraPermissionFlow());
+  </script>
+</body>
+</html>

@@ -1,0 +1,692 @@
+/*
+ * AttendX — shared theme
+ * Institutional attendance register aesthetic.
+ *
+ * Palette (no gradients, no glassmorphism):
+ *   Ink navy ......... #10233F   (headers, primary buttons, kiosk bg)
+ *   Paper white ...... #F7F8FA   (page background)
+ *   Card / surface ... #FFFFFF   with 1px solid #E2E5EA border
+ *   Present / success  #16794E   (muted forest green)
+ *   Absent / pending   #B3441E   (muted brick)
+ *   Text primary ..... #10233F
+ *   Text secondary ... #5B6472
+ *
+ * Typography:
+ *   Headers .......... "Source Serif 4", serif
+ *   Body / data ...... "IBM Plex Sans", sans-serif
+ */
+
+/* ------------------------------------------------------------------ */
+/*  CSS reset & variables                                              */
+/* ------------------------------------------------------------------ */
+:root {
+  --ink:       #10233F;
+  --paper:     #F7F8FA;
+  --card:      #FFFFFF;
+  --border:    #E2E5EA;
+  --present:   #16794E;
+  --absent:    #B3441E;
+  --text:      #10233F;
+  --text-sec:  #5B6472;
+  --focus:     rgba(16, 35, 63, 0.2);
+  --radius:    4px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "IBM Plex Sans", sans-serif;
+  background: var(--paper);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Typography                                                         */
+/* ------------------------------------------------------------------ */
+h1, h2, h3 {
+  font-family: "Source Serif 4", serif;
+  font-weight: 700;
+  color: var(--ink);
+}
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 1.1rem; }
+
+/* ------------------------------------------------------------------ */
+/*  Buttons                                                            */
+/* ------------------------------------------------------------------ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, opacity 0.15s;
+}
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--ink);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) { background: #0c1a30; }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover:not(:disabled) { background: #f0f1f3; }
+
+.btn-danger {
+  background: transparent;
+  color: var(--absent);
+  border: 1px solid var(--absent);
+}
+.btn-danger:hover:not(:disabled) { background: rgba(179, 68, 30, 0.08); }
+
+/* ------------------------------------------------------------------ */
+/*  Inputs                                                             */
+/* ------------------------------------------------------------------ */
+input[type="text"],
+input[type="password"],
+input[type="date"],
+select,
+textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 0.875rem;
+  color: var(--text);
+  background: var(--card);
+  transition: border-color 0.15s;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px var(--focus);
+}
+select option { background: var(--card); }
+textarea { resize: vertical; min-height: 72px; }
+
+/* ------------------------------------------------------------------ */
+/*  Card / surface                                                     */
+/* ------------------------------------------------------------------ */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 20px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Ledger table                                                       */
+/* ------------------------------------------------------------------ */
+.ledger {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+.ledger th {
+  text-align: left;
+  padding: 10px 12px;
+  font-family: "IBM Plex Sans", sans-serif;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--text-sec);
+  border-bottom: 2px solid var(--ink);
+  background: var(--paper);
+}
+.ledger td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.ledger tbody tr:last-child td { border-bottom: 1px solid var(--border); }
+
+/* Left-border accent for present/absent rows */
+.ledger tr.row-present td:first-child {
+  border-left: 3px solid var(--present);
+}
+.ledger tr.row-absent td:first-child {
+  border-left: 3px solid var(--absent);
+}
+
+/* Flash animation — brief left-border highlight when freshly marked */
+@keyframes ledger-flash {
+  0%   { background: rgba(22, 121, 78, 0.12); }
+  100% { background: transparent; }
+}
+.ledger tr.just-marked td {
+  animation: ledger-flash 1.2s ease-out;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Status toggle (present / absent button in dashboard)               */
+/* ------------------------------------------------------------------ */
+.status-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  font-family: "IBM Plex Sans", sans-serif;
+  transition: background 0.15s;
+}
+.status-toggle.present {
+  color: var(--present);
+  border-color: var(--present);
+}
+.status-toggle.present:hover { background: rgba(22, 121, 78, 0.08); }
+.status-toggle.absent {
+  color: var(--absent);
+  border-color: var(--absent);
+}
+.status-toggle.absent:hover { background: rgba(179, 68, 30, 0.08); }
+
+/* ------------------------------------------------------------------ */
+/*  Method badge                                                       */
+/* ------------------------------------------------------------------ */
+.method-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--paper);
+  color: var(--text-sec);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Toast notification                                                 */
+/* ------------------------------------------------------------------ */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--card);
+  pointer-events: auto;
+  animation: toast-in 0.3s ease-out, toast-out 0.3s ease-in 3.2s forwards;
+  max-width: 360px;
+}
+.toast.success { background: var(--present); }
+.toast.error   { background: var(--absent); }
+.toast.info    { background: var(--ink); }
+
+@keyframes toast-in  { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateY(-8px); } }
+
+/* ------------------------------------------------------------------ */
+/*  Spinner (model loading)                                            */
+/* ------------------------------------------------------------------ */
+.spinner {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ------------------------------------------------------------------ */
+/*  Loading overlay (scanner / enroll camera)                          */
+/* ------------------------------------------------------------------ */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 35, 63, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 10;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: opacity 0.3s;
+}
+.loading-overlay .spinner {
+  border-color: rgba(255,255,255,0.2);
+  border-top-color: #fff;
+  width: 36px;
+  height: 36px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Filter pills                                                       */
+/* ------------------------------------------------------------------ */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-sec);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.pill.active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+.pill:hover:not(.active) { background: #f0f1f3; }
+
+/* ------------------------------------------------------------------ */
+/*  Modal overlay                                                      */
+/* ------------------------------------------------------------------ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 35, 63, 0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1000;
+}
+.modal-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 440px;
+  width: 100%;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+}
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.125rem;
+  cursor: pointer;
+  color: var(--text-sec);
+  line-height: 1;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Kiosk pages (scanner / enroll) — ink-navy full-bleed bg            */
+/* ------------------------------------------------------------------ */
+body.kiosk {
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 16px;
+}
+body.kiosk .kiosk-wrap {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.viewport-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #000;
+  border: 2px solid rgba(255,255,255,0.15);
+  overflow: hidden;
+}
+.viewport-frame video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+.viewport-frame canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  transform: scaleX(-1);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Kiosk status banner                                                */
+/* ------------------------------------------------------------------ */
+.kiosk-status {
+  padding: 10px 14px;
+  border: 1px solid rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8125rem;
+}
+.kiosk-status .status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--present);
+  flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Mode tabs (scanner page)                                           */
+/* ------------------------------------------------------------------ */
+.mode-tabs {
+  display: flex;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.mode-tab {
+  flex: 1;
+  padding: 9px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.5);
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.mode-tab.active {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Recent scans list (scanner page)                                   */
+/* ------------------------------------------------------------------ */
+.recent-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+.recent-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.8125rem;
+}
+.recent-item:last-child { border-bottom: none; }
+
+/* ------------------------------------------------------------------ */
+/*  Kiosk nav links                                                    */
+/* ------------------------------------------------------------------ */
+.kiosk-nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.kiosk-nav a {
+  color: rgba(255,255,255,0.6);
+  text-decoration: none;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  transition: color 0.15s, border-color 0.15s;
+}
+.kiosk-nav a:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+
+/* ------------------------------------------------------------------ */
+/*  Enroll page — guide oval                                           */
+/* ------------------------------------------------------------------ */
+.guide-oval {
+  position: absolute;
+  top: 48%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 180px; height: 240px;
+  border: 2px dashed rgba(255,255,255,0.4);
+  border-radius: 50%;
+  pointer-events: none;
+  transition: border-color 0.3s;
+}
+.guide-oval.ready {
+  border-color: var(--present);
+  border-style: solid;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Student roster items (students page)                               */
+/* ------------------------------------------------------------------ */
+.roster-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.roster-item:last-child { border-bottom: none; }
+.roster-name { font-weight: 600; font-size: 0.875rem; }
+.roster-meta { font-size: 0.75rem; color: var(--text-sec); }
+
+.badge-enrolled {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius);
+}
+.badge-enrolled.yes { background: rgba(22,121,78,0.1); color: var(--present); }
+.badge-enrolled.no  { background: rgba(91,100,114,0.1); color: var(--text-sec); }
+
+/* ------------------------------------------------------------------ */
+/*  Alert message                                                      */
+/* ------------------------------------------------------------------ */
+.alert-msg {
+  padding: 10px 14px;
+  border: 1px solid var(--present);
+  background: rgba(22, 121, 78, 0.06);
+  color: var(--present);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Error box (login)                                                  */
+/* ------------------------------------------------------------------ */
+.error-box {
+  padding: 10px 14px;
+  border: 1px solid var(--absent);
+  background: rgba(179, 68, 30, 0.06);
+  color: var(--absent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Inline SVG icon helper                                             */
+/* ------------------------------------------------------------------ */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  flex-shrink: 0;
+}
+.icon svg {
+  width: 100%; height: 100%;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Print styles                                                       */
+/* ------------------------------------------------------------------ */
+@media print {
+  body { background: #fff; padding: 0; }
+  .topbar, .controls-bar, .filters-bar, .nav-actions, .kiosk-nav,
+  .toast-container, .btn { display: none !important; }
+  .card { border: none; }
+  .ledger th, .ledger td { border: 1px solid #ccc; padding: 6px 8px; }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Responsive                                                         */
+/* ------------------------------------------------------------------ */
+@media (max-width: 640px) {
+  h1 { font-size: 1.25rem; }
+  .ledger { font-size: 0.75rem; }
+  .ledger th, .ledger td { padding: 7px 8px; }
+  .form-grid { grid-template-columns: 1fr !important; }
+  .topbar { flex-direction: column; align-items: flex-start; }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Modern Camera Permission Modal & E2EE Badges                       */
+/* ------------------------------------------------------------------ */
+.permission-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 35, 63, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 2000;
+  animation: modal-fade-in 0.2s ease-out;
+}
+@keyframes modal-fade-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+.permission-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  max-width: 440px;
+  width: 100%;
+  padding: 28px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25);
+  color: var(--ink);
+  border: 1px solid var(--border);
+}
+.permission-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(16, 35, 63, 0.05);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+}
+.permission-card h3 {
+  font-family: "Source Serif 4", serif;
+  font-size: 1.25rem;
+  color: var(--ink);
+  margin-top: -2px;
+}
+.permission-card p {
+  font-size: 0.8125rem;
+  color: var(--text-sec);
+  line-height: 1.5;
+}
+.security-callout {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--present);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 0.75rem;
+  color: var(--ink);
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  width: 100%;
+}
+.security-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 4px 10px;
+  border-radius: 14px;
+  letter-spacing: 0.2px;
+}
+.security-badge-pill .pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--present);
+  box-shadow: 0 0 6px var(--present);
+  display: inline-block;
+}
+.permission-btn-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 8px;
+  margin-top: 4px;
+}
+.permission-btn-group .btn {
+  justify-content: center;
+  padding: 11px;
+  font-size: 0.875rem;
+}
+.permission-help-box {
+  background: rgba(179, 68, 30, 0.05);
+  border: 1px solid rgba(179, 68, 30, 0.3);
+  border-radius: var(--radius);
+  padding: 12px;
+  text-align: left;
+  font-size: 0.75rem;
+  color: var(--absent);
+  width: 100%;
+}
+.permission-help-box ol {
+  padding-left: 18px;
+  margin-top: 6px;
+  line-height: 1.6;
+}

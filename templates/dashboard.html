@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AttendX — Teacher dashboard & attendance register</title>
+  <meta name="description" content="Institutional attendance register and student verification dashboard.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+
+  <style>
+    .dashboard-container {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 24px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .brand-title {
+      font-size: 1.5rem;
+      color: var(--ink);
+    }
+    .brand-sub {
+      font-size: 0.8125rem;
+      color: var(--text-sec);
+      margin-top: 2px;
+    }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    /* Stats grid */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 16px 18px;
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+    }
+    .stat-card.present-card { border-left: 4px solid var(--present); }
+    .stat-card.absent-card  { border-left: 4px solid var(--absent); }
+    .stat-card.total-card   { border-left: 4px solid var(--ink); }
+    .stat-card.rate-card    { border-left: 4px solid #3730a3; }
+
+    .stat-num {
+      font-family: "Source Serif 4", serif;
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.1;
+    }
+    .stat-lbl {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-sec);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Controls bar */
+    .controls-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .filters-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .search-box {
+      max-width: 260px;
+    }
+
+    .student-link {
+      color: var(--ink);
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .student-link:hover { text-decoration: underline; color: #000; }
+  </style>
+</head>
+<body>
+
+  <!-- Toast notifications -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <div class="dashboard-container">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div>
+        <h1 class="brand-title">AttendX — Teacher dashboard</h1>
+        <p class="brand-sub">Daily attendance ledger and biometric verification records</p>
+      </div>
+      <div class="nav-actions">
+        <a href="/" class="btn btn-secondary">
+          <span class="icon" style="width:14px;height:14px;"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+          Scanner kiosk
+        </a>
+        <a href="/students" class="btn btn-secondary">
+          <span class="icon" style="width:14px;height:14px;"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+          Manage students
+        </a>
+        <a href="/export?date={{ selected_date }}" class="btn btn-primary" title="Export current sheet as CSV">
+          <span class="icon" style="width:14px;height:14px;"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+          Export CSV
+        </a>
+        <button class="btn btn-secondary" onclick="window.print()" title="Print attendance sheet">
+          <span class="icon" style="width:14px;height:14px;"><svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></span>
+          Print
+        </button>
+        <a href="/logout" class="btn btn-secondary" title="Sign out">
+          <span class="icon" style="width:14px;height:14px;"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
+          Logout
+        </a>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-row">
+      <div class="stat-card total-card">
+        <div class="stat-lbl">Total roster</div>
+        <div class="stat-num" id="totalCount">{{ total_students }}</div>
+      </div>
+      <div class="stat-card present-card">
+        <div class="stat-lbl">Present today</div>
+        <div class="stat-num" id="presentCount" style="color: var(--present);">{{ present_count }}</div>
+      </div>
+      <div class="stat-card absent-card">
+        <div class="stat-lbl">Absent</div>
+        <div class="stat-num" id="absentCount" style="color: var(--absent);">{{ total_students - present_count }}</div>
+      </div>
+      <div class="stat-card rate-card">
+        <div class="stat-lbl">Attendance rate</div>
+        <div class="stat-num">
+          {% if total_students > 0 %}
+            {{ ((present_count / total_students) * 100)|round(1) }}%
+          {% else %}
+            0%
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls card -->
+    <div class="controls-card">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <label for="datePicker" style="font-size: 0.8125rem; font-weight: 600; color: var(--text-sec);">Register date:</label>
+        <input type="date" id="datePicker" value="{{ selected_date }}" onchange="onDateChanged(this.value)" style="width: auto;">
+      </div>
+
+      <div class="filters-wrap">
+        <div class="pills-group">
+          <button class="pill active" onclick="setFilter('all', this)">All ({{ total_students }})</button>
+          <button class="pill" onclick="setFilter('present', this)">Present ({{ present_count }})</button>
+          <button class="pill" onclick="setFilter('absent', this)">Absent ({{ total_students - present_count }})</button>
+          <button class="pill" onclick="setFilter('faces', this)">Faces enrolled ({{ face_enrolled_count }})</button>
+        </div>
+        <input type="text" id="searchInput" class="search-box" placeholder="Search student name or roll ID…" oninput="filterTable()">
+      </div>
+    </div>
+
+    <!-- Attendance ledger table card -->
+    <div class="card" style="padding: 0; overflow-x: auto;">
+      <table class="ledger" id="attendanceTable">
+        <thead>
+          <tr>
+            <th style="width: 50px;">Sr</th>
+            <th>Student name</th>
+            <th>Roll number</th>
+            <th>Biometric face</th>
+            <th>Status</th>
+            <th>Time</th>
+            <th>Method</th>
+            <th>Overall rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in sheet %}
+            <tr class="ledger-row {{ 'row-present' if r['present'] else 'row-absent' }}"
+                id="row-{{ r['id'] }}"
+                data-name="{{ r['name']|lower }}"
+                data-id="{{ r['id']|lower }}"
+                data-present="{{ '1' if r['present'] else '0' }}"
+                data-face="{{ '1' if r['has_face'] else '0' }}">
+              <td>{{ r['sr'] }}</td>
+              <td>
+                <span class="student-link" onclick="openStudentModal('{{ r['id'] }}')">{{ r['name'] }}</span>
+              </td>
+              <td><span style="font-family: monospace; font-size: 0.8125rem;">{{ r['id'] }}</span></td>
+              <td>
+                {% if r['has_face'] %}
+                  <span class="badge-enrolled yes">Enrolled</span>
+                {% else %}
+                  <span class="badge-enrolled no">Not registered</span>
+                {% endif %}
+              </td>
+              <td>
+                <button class="status-toggle {{ 'present' if r['present'] else 'absent' }}"
+                        id="btn-{{ r['id'] }}"
+                        onclick="toggleAttendance('{{ r['id'] }}')">
+                  <span class="icon" style="width:12px;height:12px;">
+                    {% if r['present'] %}
+                      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    {% else %}
+                      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    {% endif %}
+                  </span>
+                  <span id="label-{{ r['id'] }}">{{ 'Present' if r['present'] else 'Absent' }}</span>
+                </button>
+              </td>
+              <td id="time-{{ r['id'] }}">{{ r['time'] }}</td>
+              <td id="method-{{ r['id'] }}">
+                {% if r['present'] %}
+                  <span class="method-badge">{{ r['method'] }}</span>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>
+                <b>{{ r['percent'] }}%</b>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Student History Profile Modal -->
+  <div class="modal-overlay" id="studentModal">
+    <div class="modal-box" style="max-width: 520px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 id="mStudentName">Student profile</h3>
+        <button class="modal-close" onclick="closeStudentModal()">&#10005;</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.8125rem; background: var(--paper); padding: 12px; border: 1px solid var(--border);">
+        <div><b>Roll number:</b> <span id="mStudentId"></span></div>
+        <div><b>Attendance rate:</b> <span id="mStudentRate"></span></div>
+        <div><b>Days present:</b> <span id="mDaysPresent"></span></div>
+        <div><b>Face biometric:</b> <span id="mFaceStatus"></span></div>
+      </div>
+
+      <div>
+        <h4 style="font-size: 0.8125rem; font-family: 'Source Serif 4', serif; margin-bottom: 6px;">Attendance record history</h4>
+        <div style="max-height: 220px; overflow-y: auto; border: 1px solid var(--border);">
+          <table class="ledger" style="font-size: 0.75rem;">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Check-in time</th>
+                <th>Method</th>
+              </tr>
+            </thead>
+            <tbody id="mHistoryBody">
+              <tr><td colspan="3" style="text-align: center; color: var(--text-sec);">Loading history…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary" style="width: 100%; justify-content: center;" onclick="closeStudentModal()">Close</button>
+    </div>
+  </div>
+
+  <script>
+    let currentFilter = 'all';
+    const currentDate = "{{ selected_date }}";
+
+    function showToast(msg, type) {
+      const c = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      el.className = 'toast ' + (type || 'info');
+      el.textContent = msg;
+      c.appendChild(el);
+      setTimeout(() => el.remove(), 3600);
+    }
+
+    function onDateChanged(newDate) {
+      if (newDate) {
+        window.location.href = `/dashboard?date=${newDate}`;
+      }
+    }
+
+    function setFilter(filterType, btn) {
+      currentFilter = filterType;
+      document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      filterTable();
+    }
+
+    function filterTable() {
+      const q = document.getElementById('searchInput').value.toLowerCase().trim();
+      const rows = document.querySelectorAll('.ledger-row');
+
+      rows.forEach(row => {
+        const name = row.getAttribute('data-name');
+        const sid  = row.getAttribute('data-id');
+        const isPresent = row.getAttribute('data-present') === '1';
+        const hasFace   = row.getAttribute('data-face') === '1';
+
+        let matchesFilter = true;
+        if (currentFilter === 'present') matchesFilter = isPresent;
+        if (currentFilter === 'absent')  matchesFilter = !isPresent;
+        if (currentFilter === 'faces')   matchesFilter = hasFace;
+
+        const matchesQuery = name.includes(q) || sid.includes(q);
+
+        row.style.display = (matchesFilter && matchesQuery) ? '' : 'none';
+      });
+    }
+
+    async function toggleAttendance(studentId) {
+      const btn = document.getElementById(`btn-${studentId}`);
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/attendance/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_id: studentId, date: currentDate })
+        });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+          const row = document.getElementById(`row-${studentId}`);
+          const label = document.getElementById(`label-${studentId}`);
+          const timeCell = document.getElementById(`time-${studentId}`);
+          const methodCell = document.getElementById(`method-${studentId}`);
+
+          if (data.is_present) {
+            row.classList.remove('row-absent');
+            row.classList.add('row-present');
+            row.classList.add('just-marked');
+            row.setAttribute('data-present', '1');
+            btn.className = 'status-toggle present';
+            btn.innerHTML = `<span class="icon" style="width:12px;height:12px;"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span id="label-${studentId}">Present</span>`;
+            timeCell.textContent = data.time || '-';
+            methodCell.innerHTML = `<span class="method-badge">${data.method || 'manual'}</span>`;
+            showToast(`Marked present — ${studentId}`, 'success');
+          } else {
+            row.classList.remove('row-present');
+            row.classList.add('row-absent');
+            row.setAttribute('data-present', '0');
+            btn.className = 'status-toggle absent';
+            btn.innerHTML = `<span class="icon" style="width:12px;height:12px;"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span><span id="label-${studentId}">Absent</span>`;
+            timeCell.textContent = '-';
+            methodCell.textContent = '-';
+            showToast(`Marked absent — ${studentId}`, 'info');
+          }
+          updateCounters();
+        } else {
+          showToast(`Error: ${data.message}`, 'error');
+        }
+      } catch (err) {
+        showToast('Network error while toggling attendance', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function updateCounters() {
+      const allRows = document.querySelectorAll('.ledger-row');
+      let pres = 0;
+      allRows.forEach(r => {
+        if (r.getAttribute('data-present') === '1') pres++;
+      });
+      document.getElementById('presentCount').textContent = pres;
+      document.getElementById('absentCount').textContent = allRows.length - pres;
+    }
+
+    // ---- Student history modal ----
+    async function openStudentModal(studentId) {
+      const modal = document.getElementById('studentModal');
+      modal.style.display = 'flex';
+      document.getElementById('mStudentName').textContent = 'Loading student…';
+      document.getElementById('mStudentId').textContent = studentId;
+      document.getElementById('mStudentRate').textContent = '…';
+      document.getElementById('mDaysPresent').textContent = '…';
+      document.getElementById('mFaceStatus').textContent = '…';
+      document.getElementById('mHistoryBody').innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-sec);">Loading records…</td></tr>';
+
+      try {
+        const res = await fetch(`/api/students/${encodeURIComponent(studentId)}/history`);
+        const data = await res.json();
+        if (data.status === 'success') {
+          document.getElementById('mStudentName').textContent = data.student.name;
+          document.getElementById('mStudentId').textContent = data.student.id;
+          document.getElementById('mStudentRate').textContent = `${data.stats.percent}%`;
+          document.getElementById('mDaysPresent').textContent = `${data.stats.days_present} of ${data.stats.total_days} days`;
+          document.getElementById('mFaceStatus').textContent = data.student.has_face ? 'Registered' : 'Not registered';
+
+          if (data.history.length === 0) {
+            document.getElementById('mHistoryBody').innerHTML = '<tr><td colspan="3" style="text-align:center; color: var(--text-sec);">No attendance recorded yet</td></tr>';
+          } else {
+            document.getElementById('mHistoryBody').innerHTML = data.history.map(h => `
+              <tr>
+                <td>${h.date}</td>
+                <td>${h.time}</td>
+                <td><span class="method-badge">${h.method}</span></td>
+              </tr>
+            `).join('');
+          }
+        } else {
+          document.getElementById('mStudentName').textContent = 'Error loading student';
+        }
+      } catch (err) {
+        document.getElementById('mStudentName').textContent = 'Network error';
+      }
+    }
+
+    function closeStudentModal() {
+      document.getElementById('studentModal').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
